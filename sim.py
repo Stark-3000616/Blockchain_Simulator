@@ -13,6 +13,8 @@ class Peer:
         self.balance = 100  # Initial balance for each peer
         self.mean_transaction_time = mean_transaction_time
         self.time_since_last_transaction = np.random.exponential(scale=self.mean_transaction_time)
+        self.all_peers= []
+        self.neighbours= []
 
     def generate_transaction(self, current_time):
         if current_time - self.time_since_last_transaction >= 0:
@@ -29,6 +31,8 @@ class Peer:
         self.balance -= amount
         return transaction
 
+    def get_all_peers(self, peers)
+        self.all_peers=peers
     def receive_transaction(self, transaction):
         # Implement logic for receiving and forwarding transactions
         pass
@@ -80,6 +84,9 @@ class Simulation:
             is_low_cpu = random.random() < (low_cpu_percentage / 100)
             peer = Peer(peer_id, is_slow, is_low_cpu, self.mean_transaction_time)
             Simulation.peers.append(peer)
+        peer_id=[peer.peer_id for peer in Simulation.peers]
+        for peer in peers:
+            peer.get_all_peers(Simulation.peers)
 
     def generate_random_topology(self):
         self.graph = nx.Graph()
