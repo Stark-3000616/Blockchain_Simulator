@@ -1,3 +1,5 @@
+# Created by Shamik Kumar De & Sayantan Biswas
+
 import random
 import numpy as np
 import networkx as nx
