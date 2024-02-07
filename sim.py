@@ -21,15 +21,15 @@ class Peer:
         self.neighbours = []
         self.transactions = []
         self.speed_of_light_delay=speed_of_light_delay
+        self.blockchain=Blockchain()
     
     def store_all_peers(self, all_peer_ids):
         self.all_peers=all_peer_ids
 
     def generate_transaction(self, current_time):
-        receiver_id=random.choice([peer_id for peer_id in self.all_peers if peer_id != self.peer_id])
+        receiver_id=random.choice([peer_id[0] for peer_id in self.all_peers if peer_id[0] != self.peer_id])
         amount = random.randint(0, self.balance)
         txn=Transaction(self.peer_id, receiver_id, amount)
-        self.balance-=amount
         self.receive_transaction(txn, current_time)
     
     def find_transactions(self, txn):
@@ -41,16 +41,14 @@ class Peer:
     def receive_transaction(self, txn, current_time):
         if self.find_transactions(txn):
             return
-        if txn.receiver == self.peer_id:
-            self.balance+=txn.amount
         self.transactions.append(txn)
         m = sys.getsizeof(txn)*8
         for neighbour in self.neighbours:
             c=0
             if not self.is_slow and not neighbour[1]:
-                c=5000000
-            else:
                 c=100000000
+            else:
+                c=5000000
             d = np.random.exponential(96000/c)
             time_delta = self.speed_of_light_delay + (m/c) + d
             new_event= Event(current_time+time_delta, 'txn_receive', neighbour[0], txn)
@@ -63,6 +61,34 @@ class Transaction:
         self.receiver=peer_id2
         self.amount=amount
         self.statement=f"{self.txn_id}:{self.sender} pays {self.receiver} {amount} coins"
+
+class Coinbase:
+    def __init__(self, peer_id):
+        self.txn_id=uuid.uuid4()
+        self.miner=peer_id
+        self.statement=f"{self.txn_id}:{self.miner} mines 50 coins"
+
+class Block:
+    def __init__(self, prev_hash, mine_time, miner_id, index):
+        self.blk_id=uuid.uuid4()
+        self.prev_hash=prev_hash
+        self.mine_time=mine_time
+        self.index=index
+        self.transactions=[]
+        coinbase=Coinbase(self.miner_id)
+        self.transactions.append(coinbase)
+
+    def add_transaction(self, txn):
+        self.transactions.append(txn)
+
+class Blockchain:
+    def __init__(self):
+        self.genesis=Block(0, 0, 0, 0)
+        self.blocks=[]
+        self.blocks.append(genesis)
+
+    def add_block(self, block):
+        self.blocks.append(block)
 
 class Event:
 
@@ -91,7 +117,7 @@ class Simulation:
             is_slow = random.random() < (self.slow_percentage / 100)
             is_low_cpu = random.random() < (self.low_cpu_percentage / 100)
             peer_id = uuid.uuid4()
-            all_peer_ids.append(peer_id)
+            all_peer_ids.append((peer_id, 100))
             peer = Peer(peer_id, is_slow, is_low_cpu, speed_of_light_delay)
             self.peers.append(peer)
         for peer in self.peers:
@@ -129,8 +155,8 @@ class Simulation:
     def display_network(self):
         nx.draw(self.graph, node_color='skyblue', node_size=50, font_size=5)
         plt.savefig("graph.png")
-        # for peer in self.peers:
-        #     print(len(peer.transactions))
+        for peer in self.peers:
+            print(len(peer.transactions))
 
     def find_peer_by_id(self, id):
         for peer in self.peers:
@@ -151,15 +177,16 @@ class Simulation:
                 peer.receive_transaction(current_event.data, current_time)
 
 if __name__=="__main__":
-    if(len(sys.argv)<6):
-        print(f"Usage: {sys.argv[0]} <num_peers> <slow_%> <low_cpu_%> <mean_txn_time> <duration>")
+    if(len(sys.argv)<7):
+        print(f"Usage: {sys.argv[0]} <num_peers> <slow_%> <low_cpu_%> <mean_txn_time> <mean_blkgen_time> <duration>")
         sys.exit(1)
 
     num_peers = int(sys.argv[1])
     slow_percentage = int(sys.argv[2])
     low_cpu_percentage = int(sys.argv[3])
     mean_transaction_time = int(sys.argv[4])
-    simulation_duration = int(sys.argv[5])
+    mean_block_generation_time = int(sys.argv[5])
+    simulation_duration = int(sys.argv[6])
 
     # Creating an object of Simulation Class
     simulation= Simulation(num_peers, slow_percentage, low_cpu_percentage, mean_transaction_time, simulation_duration)
@@ -174,7 +201,7 @@ if __name__=="__main__":
         recreate_graph()
     print("Adding Events to the Queue...")
     simulation.initialize_events(simulation_duration, mean_transaction_time)
-    ## print(len(event_queue))
+    print(len(event_queue))
     print("Running Simulation...")
     simulation.run_simulation(simulation_duration)
     simulation.display_network()
