@@ -12,23 +12,27 @@ event_queue=[]
 
 class Peer:
 
-    def __init__(self, peer_id, is_slow, is_low_cpu, speed_of_light_delay):
+    def __init__(self, peer_id, is_slow, is_low_cpu, speed_of_light_delay, hashing_power, mean_block_generation_time):
         self.peer_id=peer_id
         self.is_slow=is_slow
         self.is_low_cpu=is_low_cpu
-        self.balance=100
         self.all_peers = []
         self.neighbours = []
         self.transactions = []
+        self.used_txns = []
         self.speed_of_light_delay=speed_of_light_delay
-        self.blockchain=Blockchain()
+        self.blockchain=Blockchain(len(self.all_peers))
+        self.hashing_power=hashing_power
+        if not is_low_cpu:
+            self.hashing_power*=10
+        self.mean_block_generation_time=mean_block_generation_time
     
     def store_all_peers(self, all_peer_ids):
         self.all_peers=all_peer_ids
 
     def generate_transaction(self, current_time):
-        receiver_id=random.choice([peer_id[0] for peer_id in self.all_peers if peer_id[0] != self.peer_id])
-        amount = random.randint(0, self.balance)
+        receiver_id=random.choice([peer_id for peer_id in self.all_peers if peer_id != self.peer_id])
+        amount = random.randint(0, 20)
         txn=Transaction(self.peer_id, receiver_id, amount)
         self.receive_transaction(txn, current_time)
     
@@ -53,6 +57,29 @@ class Peer:
             time_delta = self.speed_of_light_delay + (m/c) + d
             new_event= Event(current_time+time_delta, 'txn_receive', neighbour[0], txn)
             heapq.heappush(event_queue, new_event)
+    
+    def generate_block(self, current_time):
+        prev_hash=hash(self.blockchain.last_block)
+        index=self.blockchain.last_block.index+1
+        new_block=Block(prev_hash, current_time, self.peer_id, index)
+        i=0
+        while i < len(self.transactions) and sys.getsizeof(new_block)<1000000:
+            new_block.add_transaction(self.transactions[i])
+            i+=1
+        Tk = np.random.exponential(self.mean_block_generation_time/self.hashing_power)
+        mining = Event(current_time+Tk, 'blk_mining', self.peer_id, (new_block, self.blockchain.last_block))
+        heapq.heappush(event_queue, mining)
+
+    def receive_block(self, current_time, block):
+        # if(block in self.blockchain.blocks):
+        #     return
+        # coinbase=block.transactions[0]
+        # for i in range(1, len(block.transactions)):
+        #     if block.transactions[i] in self.transactions:
+        #         self.transactions.remove(block.transactions[i])
+        #     self.used_txns.append(block.transactions[i])
+        # self.blockchain.add_block(block)
+        pass
 
 class Transaction:
     def __init__(self, peer_id1, peer_id2, amount):
@@ -75,20 +102,31 @@ class Block:
         self.mine_time=mine_time
         self.index=index
         self.transactions=[]
-        coinbase=Coinbase(self.miner_id)
+        coinbase=Coinbase(miner_id)
         self.transactions.append(coinbase)
+        self.balance=[]
 
     def add_transaction(self, txn):
         self.transactions.append(txn)
 
 class Blockchain:
-    def __init__(self):
-        self.genesis=Block(0, 0, 0, 0)
-        self.blocks=[]
-        self.blocks.append(genesis)
+    def __init__(self, num_peers):
+        genesis=Block(0, 0, 0, 0)
+        genesis.balance=[50]*num_peers
+        self.blocks={}
+        self.blocks[0]=[genesis]
+        self.last_block=genesis
 
     def add_block(self, block):
-        self.blocks.append(block)
+        if block.index not in self.blocks:
+            self.blocks[block.index]=[block]
+            self.last_block=block
+        else:
+            self.blocks[block.index].append(block)
+            if block.index == self.last_block.index and block.mine_time<self.last_block.mine_time:
+                self.last_block=block
+
+                
 
 class Event:
 
@@ -111,14 +149,23 @@ class Simulation:
         self.slow_percentage = slow_percentage
         self.low_cpu_percentage = low_cpu_percentage
 
-    def initialize_peers(self, speed_of_light_delay):
+    def initialize_peers(self, speed_of_light_delay, mean_block_generation_time):
         all_peer_ids=[]
+        slow=[0]*self.num_peers
+        low_cpu=[0]*self.num_peers
+        indices1 = random.sample(range(self.num_peers), int(self.num_peers * self.slow_percentage/ 100))
+        indices2 = random.sample(range(self.num_peers), int(self.num_peers * self.low_cpu_percentage / 100))
+        num_low_cpu=sum(low_cpu)
+        num_high_cpu=self.num_peers-num_low_cpu
+        hashing_power=1/(num_high_cpu*10 + num_low_cpu)
+        for i in indices1:
+            slow[i]=1
+        for i in indices1:
+            low_cpu[i]=1
         for i in range(0, self.num_peers):
-            is_slow = random.random() < (self.slow_percentage / 100)
-            is_low_cpu = random.random() < (self.low_cpu_percentage / 100)
-            peer_id = uuid.uuid4()
-            all_peer_ids.append((peer_id, 100))
-            peer = Peer(peer_id, is_slow, is_low_cpu, speed_of_light_delay)
+            peer_id = i
+            all_peer_ids.append(peer_id)
+            peer = Peer(peer_id, slow[i], low_cpu[i], speed_of_light_delay, hashing_power, mean_block_generation_time)
             self.peers.append(peer)
         for peer in self.peers:
             peer.store_all_peers(all_peer_ids)
@@ -128,7 +175,7 @@ class Simulation:
         for peer in self.peers:
             num_connections = random.randint(3,6) - self.graph.degree[peer]
             num_connections = max(0, num_connections)
-            peers_to_connect = random.sample([other_peer for other_peer in self.peers if other_peer != peer and other_peer not in peer.neighbours], num_connections)
+            peers_to_connect = random.sample([other_peer for other_peer in self.peers if other_peer != peer and peer not in other_peer.neighbours and len(other_peer.neighbours)<6], num_connections)
             self.graph.add_edges_from([(peer, connected_peer) for connected_peer in peers_to_connect])
             for connected_peer in peers_to_connect:
                 peer.neighbours.append((connected_peer.peer_id, connected_peer.is_slow))
@@ -151,12 +198,14 @@ class Simulation:
             peer = random.choice([node for node in self.peers])
             self.schedule_event(event_time, 'txn_generation', peer.peer_id)
             event_time+=np.random.exponential(mean_transaction_time)
-
+        for peer in self.peers:
+            self.schedule_event(0, 'blk_generation', peer.peer_id)
+    
     def display_network(self):
         nx.draw(self.graph, node_color='skyblue', node_size=50, font_size=5)
         plt.savefig("graph.png")
-        for peer in self.peers:
-            print(len(peer.transactions))
+        # for peer in self.peers:
+        #     print(len(peer.transactions))
 
     def find_peer_by_id(self, id):
         for peer in self.peers:
@@ -175,7 +224,10 @@ class Simulation:
                 peer.generate_transaction(current_time)
             elif current_event.event_type == 'txn_receive':
                 peer.receive_transaction(current_event.data, current_time)
-
+            elif current_event.event_type == 'blk_generation':
+                peer.generate_block(current_time)
+            elif current_event.event_type == 'blk_mining':
+                peer.mine_block(current_time, current_event.data)
 if __name__=="__main__":
     if(len(sys.argv)<7):
         print(f"Usage: {sys.argv[0]} <num_peers> <slow_%> <low_cpu_%> <mean_txn_time> <mean_blkgen_time> <duration>")
@@ -194,14 +246,20 @@ if __name__=="__main__":
     speed_of_light_delay=random.uniform(0.01, 0.5)
 
     print("Creating peers...")
-    simulation.initialize_peers(speed_of_light_delay)
+    simulation.initialize_peers(speed_of_light_delay, mean_block_generation_time)
     print("Creating network...")
     simulation.generate_random_topology()
     while not simulation.is_connected_graph():
         recreate_graph()
     print("Adding Events to the Queue...")
     simulation.initialize_events(simulation_duration, mean_transaction_time)
-    print(len(event_queue))
+    # print(len(event_queue))
     print("Running Simulation...")
     simulation.run_simulation(simulation_duration)
     simulation.display_network()
+    print("Simulation Completed")
+
+
+# 3. Create Block
+# 4. Mine Block
+# 5. Receive Block
