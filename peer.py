@@ -9,28 +9,26 @@ from transaction import Transaction
 from event import Event
 from block import Block
 from transaction import Coinbase
-from sim import event_queue
+
+event_queue=[]
 
 class Peer:
 
-    def __init__(self, peer_id, is_slow, is_low_cpu, speed_of_light_delay, hashing_power, mean_block_generation_time):
+    def __init__(self, peer_id, is_slow, is_low_cpu, speed_of_light_delay, hashing_power, mean_block_generation_time, num_peers):
         self.peer_id=peer_id
         self.is_slow=is_slow
         self.is_low_cpu=is_low_cpu
-        self.all_peers = []
+        self.all_peers = range(num_peers)
         self.neighbours = []
         self.transactions = []
         self.used_txns = []
         self.speed_of_light_delay=speed_of_light_delay
-        self.blockchain=None
+        self.blockchain=Blockchain()
         self.hashing_power=hashing_power
         if not is_low_cpu:
             self.hashing_power*=10
         self.mean_block_generation_time=mean_block_generation_time
     
-    def store_all_peers(self, all_peer_ids):
-        self.all_peers=all_peer_ids
-        self.blockchain=Blockchain(len(self.all_peers))
 
     def generate_transaction(self, current_time):
         receiver_id=random.choice([peer_id for peer_id in self.all_peers if peer_id != self.peer_id])

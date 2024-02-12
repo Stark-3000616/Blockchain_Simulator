@@ -1,10 +1,11 @@
 from block import Block
 
 class Blockchain:
-    def __init__(self, num_peers):
-        genesis=Block(0, 0, -1, 0, 0)
-        genesis.balance=[50]*num_peers
+    def __init__(self):
         self.blocks={}
+        self.last_block=None
+        
+    def add_genesis(self, genesis):
         self.blocks[0]=[genesis]
         self.last_block=genesis
 

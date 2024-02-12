@@ -9,12 +9,13 @@ import matplotlib.pyplot as plt
 
 from event import Event
 from peer import Peer
+from peer import event_queue
+from block import Block
 
-event_queue=[]
 
 class Simulation:
 
-    def __init__(self, num_peers, slow_percentage, low_cpu_percentage, mean_transaction_time, simulation_duration):
+    def __init__(self, num_peers, slow_percentage, low_cpu_percentage, simulation_duration):
         self.peers= []
         self.graph= nx.Graph()
         self.num_peers=num_peers
@@ -36,10 +37,8 @@ class Simulation:
         for i in indices2:
             low_cpu[i]=1
         for i in range(0, self.num_peers):
-            peer = Peer(i, slow[i], low_cpu[i], speed_of_light_delay, hashing_power, mean_block_generation_time)
+            peer = Peer(i, slow[i], low_cpu[i], speed_of_light_delay, hashing_power, mean_block_generation_time, self.num_peers)
             self.peers.append(peer)
-        for peer in self.peers:
-            peer.store_all_peers(range(0, len(self.peers)))
 
     def generate_random_topology(self):
         self.graph.add_nodes_from(self.peers)
@@ -71,6 +70,12 @@ class Simulation:
             event_time+=np.random.exponential(mean_transaction_time)
         for peer in self.peers:
             self.schedule_event(0, 'blk_generation', peer.peer_id)
+            
+    def send_genesis_block(self):
+        genesis=Block(0, 0, -1, 0, -1)
+        genesis.balance=[50]*num_peers
+        for peer in self.peers:
+            peer.blockchain.add_genesis(genesis)
     
     def display_network(self):
         nx.draw(self.graph, node_color='skyblue', node_size=50, font_size=5)
@@ -112,7 +117,7 @@ class Simulation:
 
         for index, blocks in blockchain.blocks.items():
             for block in blocks:
-                G.add_node(block.blk_id, label=f"Index: {block.index}\nMiner: {block.miner_id}\nMine Time: {block.mine_time}")
+                G.add_node(block.blk_id, label=f"Blk_ID: {block.blk_id}\nIndex: {block.index}\nMiner: {block.miner_id}\nMine Time: {block.mine_time}")
 
         for index, blocks in blockchain.blocks.items():
             for block in blocks:
@@ -160,7 +165,9 @@ if __name__=="__main__":
     if(len(sys.argv)<7):
         print(f"Usage: {sys.argv[0]} <num_peers> <slow_%> <low_cpu_%> <mean_txn_time> <mean_blkgen_time> <duration>")
         sys.exit(1)
-
+        
+        
+    #Taking arguments for simulation as input
     num_peers = int(sys.argv[1])
     slow_percentage = int(sys.argv[2])
     low_cpu_percentage = int(sys.argv[3])
@@ -169,8 +176,9 @@ if __name__=="__main__":
     simulation_duration = int(sys.argv[6])
 
     # Creating an object of Simulation Class
-    simulation= Simulation(num_peers, slow_percentage, low_cpu_percentage, mean_transaction_time, simulation_duration)
-
+    simulation= Simulation(num_peers, slow_percentage, low_cpu_percentage, simulation_duration)
+    
+    # Speed of Light delay while propagation of
     speed_of_light_delay=random.uniform(0.01, 0.5)
 
     print("Creating peers...")
@@ -181,8 +189,8 @@ if __name__=="__main__":
         simulation.recreate_graph()
     print("Adding Events to the Queue...")
     simulation.initialize_events(simulation_duration, mean_transaction_time)
-    # print(len(event_queue))
     print("Running Simulation...")
+    simulation.send_genesis_block();
     simulation.run_simulation(simulation_duration)
     simulation.display_network()
     print("Simulation Completed")
@@ -190,3 +198,4 @@ if __name__=="__main__":
 
 
 # 1. Longest Chain selection on the basis of arrival time of the blocks
+# 2. 
