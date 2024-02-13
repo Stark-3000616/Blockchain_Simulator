@@ -80,6 +80,7 @@ class Simulation:
     def display_network(self):
         nx.draw(self.graph, node_color='skyblue', node_size=50, font_size=5)
         plt.savefig("graph.png")
+        plt.close()
         # for peer in self.peers:
         #     print(len(peer.transactions))
 
@@ -112,9 +113,10 @@ class Simulation:
                     self.blockchain_data[peer_id] = []
                 self.blockchain_data[peer_id].append(block)
     
-    def visualize_blockchain(self, blockchain):
+    def visualize_blockchain(self, peer):
         G = nx.DiGraph()
-
+        plt.figure()
+        blockchain=peer.blockchain
         for index, blocks in blockchain.blocks.items():
             for block in blocks:
                 G.add_node(block.blk_id, label=f"Blk_ID: {block.blk_id}\nIndex: {block.index}\nMiner: {block.miner_id}\nMine Time: {block.mine_time}")
@@ -128,11 +130,12 @@ class Simulation:
         labels = nx.get_node_attributes(G, 'label')
         nx.draw(G, pos, with_labels=True, labels=labels, node_size=2000, node_color='skyblue', font_size=10)
         plt.title("Blockchain Visualization")
-        plt.show()
+        plt.savefig(f"Blockchain_{peer.peer_id}.png")
+        plt.close()
 
     def plot_blockchain_tree(self):
         for peer in self.peers:
-            self.visualize_blockchain(peer.blockchain)
+            self.visualize_blockchain(peer)
     # Plot the blockchain tree for each peer
         # for peer_id, blockchain in self.blockchain_data.items():
         #     num_peers = len(self.blockchain_data)
