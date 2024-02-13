@@ -1,10 +1,12 @@
 from block import Block
 
 class Blockchain:
-    def __init__(self, num_peers):
-        genesis=Block(0, 0, -1, 0, 0)
-        genesis.balance=[50]*num_peers
+    def __init__(self):
         self.blocks={}
+        self.last_block=None
+        self.blocks[0]=[]
+        
+    def add_genesis(self, genesis):
         self.blocks[0]=[genesis]
         self.last_block=genesis
 
@@ -14,5 +16,8 @@ class Blockchain:
             self.last_block=block
         else:
             self.blocks[block.index].append(block)
+            #To manage forking on the basis of mine time
             if block.index == self.last_block.index and block.mine_time<self.last_block.mine_time:
                 self.last_block=block
+    
+
