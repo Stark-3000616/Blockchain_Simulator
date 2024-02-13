@@ -13,15 +13,15 @@ from peer import Peer
 event_queue=[]
 
 class Simulation:
-
     def __init__(self, num_peers, slow_percentage, low_cpu_percentage, mean_transaction_time, simulation_duration):
+
         self.peers= []
         self.graph= nx.Graph()
         self.num_peers=num_peers
         self.simulation_duration = simulation_duration
         self.slow_percentage = slow_percentage
         self.low_cpu_percentage = low_cpu_percentage
-        self.blockchain_data = {}
+        self.blockchain_data = {} # 
 
     def initialize_peers(self, speed_of_light_delay, mean_block_generation_time):
         slow=[0]*self.num_peers
