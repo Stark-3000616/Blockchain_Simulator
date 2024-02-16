@@ -133,12 +133,18 @@ class Simulation:
         labels = nx.get_node_attributes(G, 'label')
         nx.draw(G, pos, with_labels=True, labels=labels, node_size=50, node_color='lightgreen', font_size=0, node_shape='s')
         plt.title("Blockchain Visualization")
-        plt.savefig(f"Blockchain_{peer.peer_id}.png")
+        plt.savefig(f"visuals/Blockchain_{peer.peer_id}.png")
         plt.close()
 
     def plot_blockchain_tree(self):
         for peer in self.peers:
             self.visualize_blockchain(peer)
+            
+    def write_files(self):
+        for peer in self.peers:
+            lines=peer.file_writing_lines
+            with open(f'block_tree_files/block_tree_{peer.peer_id}','w') as file:
+                file.writelines(lines)
 
      
 if __name__=="__main__":
@@ -175,7 +181,11 @@ if __name__=="__main__":
     simulation.run_simulation(simulation_duration)
     simulation.display_network()
     print("Simulation Completed")
+    print("Drawing Pictures for Visualisation...")
     simulation.plot_blockchain_tree()
+    print("Writing the block tree files...")
+    simulation.write_files()
+    print("Process Completed .. 100%")    
 
 # 1. Longest Chain selection on the basis of arrival time of the blocks
 # 2. 

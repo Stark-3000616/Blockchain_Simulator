@@ -28,6 +28,7 @@ class Peer:
         if not is_low_cpu:
             self.hashing_power*=10
         self.mean_block_generation_time=mean_block_generation_time
+        self.file_writing_lines=['block_index,miner_id,block_id,num_of_txns,mine_time,arrival_time']
     
 
     def generate_transaction(self, current_time):
@@ -128,6 +129,7 @@ class Peer:
             return
         else:
             self.blockchain.add_genesis(block)
+        self.add_to_file_writing(block.index, block.miner_id, block.blk_id, len(block.transactions), block.mine_time, current_time)
         m = sys.getsizeof(block)*8
         for neighbour in self.neighbours:
             c=0
@@ -141,5 +143,7 @@ class Peer:
             heapq.heappush(event_queue, new_event)
         self.generate_block(current_time)
         
+    def add_to_file_writing(self,block_index,miner_id,block_id,num_of_txns,mine_time,arrival_time):
+        self.file_writing_lines.append(f'\n{block_index},{miner_id},{block_id},{num_of_txns},{mine_time},{arrival_time}') 
 
 #Add an event of genesis block receive
