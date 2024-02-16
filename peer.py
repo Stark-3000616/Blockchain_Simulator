@@ -98,8 +98,6 @@ class Peer:
         #Validating Transactions
         balance=prev_block.balance[:]
         for txn in block.transactions:
-            if txn in self.used_txns:
-                return None
             if isinstance(txn, Coinbase):
                 balance[txn.miner]+=50
             else:
