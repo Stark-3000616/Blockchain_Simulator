@@ -36,7 +36,7 @@ This project is a discrete-event simulator to study blockchain networks. It simu
 1. Set the desired parameters in the `main` function of `sim.py`.
 2. Run the simulation script:
    
-   python3 sim.py
+   python3 sim.py <number_of_peers> <slow_%> <low_cpu_%> <mean_txn_gen_time> <mean_blk_gen_time> <simulation_duration>
    
 3. The simulation results and visualization will be saved in the project directory.
 
@@ -49,9 +49,8 @@ This project is a discrete-event simulator to study blockchain networks. It simu
 - Simulation duration
 
 ## Visualization
-The simulation includes visualization of the blockchain tree using NetworkX and Matplotlib. The visualization shows the structure of the blockchain, including blocks and their relationships.
+The simulation includes visualization of the blockchain tree using NetworkX and Matplotlib. The visualization shows the structure of the blockchain, including blocks and their relationships. Moreveor graph is generated for the demonstration of peer to peer network.
 
 ## Contributors
 - Sayantan Biswas
 - Shamik Kumar De
-

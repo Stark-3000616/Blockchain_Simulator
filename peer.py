@@ -46,9 +46,12 @@ class Peer:
 
     def receive_transaction(self, txn, current_time):
         #To prevent transmitting same transactions
+        #Implementation of Transaction Generation(Part 2)
+        #Check to facilitate loopless transaction forwarding
         if self.find_transactions(txn):
             return
         self.transactions.append(txn)
+        #Simulating Latencies for transaction propagation
         m = sys.getsizeof(txn)*8
         for neighbour in self.neighbours:
             c=0
@@ -112,6 +115,7 @@ class Peer:
 
     def receive_block(self, current_time, block):
         if block.miner_id!=-1:
+            #Check to facilitate loopless block forwarding
             if block.index in self.blockchain.blocks:
                 for blk in self.blockchain.blocks[block.index]:
                     if blk.blk_id == block.blk_id:
@@ -130,6 +134,7 @@ class Peer:
         else:
             self.blockchain.add_genesis(block)
         self.add_to_file_writing(block.index, block.miner_id, block.blk_id, len(block.transactions), block.mine_time, current_time)
+        #Simukating Latencies for Block Propagation
         m = sys.getsizeof(block)*8
         for neighbour in self.neighbours:
             c=0
