@@ -14,7 +14,8 @@ from block import Block
 
 
 class Simulation:
-
+    # Function to initialize the simulation environment with the specified number of peers,
+    # percentages of slow and low-CPU peers, and simulation duration.
     def __init__(self, num_peers, slow_percentage, low_cpu_percentage, simulation_duration):
         self.peers= []
         self.graph= nx.Graph()
@@ -45,7 +46,8 @@ class Simulation:
         for i in range(0, self.num_peers):
             peer = Peer(i, slow[i], low_cpu[i], speed_of_light_delay, hashing_power, mean_block_generation_time, self.num_peers)
             self.peers.append(peer)
-
+    # Function to generate a random network topology by adding nodes corresponding to peers,
+    # and connecting them randomly with a degree between 3 and 6.
     def generate_random_topology(self):
         self.graph.add_nodes_from(self.peers)
         for peer in self.peers:
@@ -55,7 +57,7 @@ class Simulation:
             self.graph.add_edges_from([(peer, connected_peer) for connected_peer in peers_to_connect])
             for connected_peer in peers_to_connect:
                 peer.neighbours.append((connected_peer.peer_id, connected_peer.is_slow))
-
+    #Function to check for graph being connected or not
     def is_connected_graph(self):
         return nx.is_connected(self.graph)
 
@@ -67,7 +69,7 @@ class Simulation:
     def schedule_event(self, event_time, event_type, peer_id):
         event=Event(event_time, event_type, peer_id)
         heapq.heappush(event_queue, event)
-
+    #Function to initialize events
     def initialize_events(self, simulation_duration, mean_transaction_time):
         event_time=0.0
         while event_time<= simulation_duration:
@@ -75,11 +77,7 @@ class Simulation:
             self.schedule_event(event_time, 'txn_generation', peer.peer_id)
             event_time+=np.random.exponential(mean_transaction_time)
             
-    # def send_genesis_block(self):
-    #     genesis=Block(0, -1, 0, -1)
-    #     genesis.balance=[50]*num_peers
-    #     for peer in self.peers:
-    #         peer.blockchain.add_genesis(genesis)
+   #Function for Scheduling the event of creating genesis block and then receiving by a peer
     def genesis_block_receive(self):
         genesis=Block(0, -1, 0, -1)
         genesis.balance=[50]*self.num_peers
@@ -88,7 +86,7 @@ class Simulation:
         heapq.heappush(event_queue, genesis_event)
     
     def display_network(self):
-        nx.draw(self.graph, node_color='skyblue', node_size=50, font_size=5)
+        nx.draw(self.graph, node_color='red', node_size=60, font_size=5)
         plt.savefig("graph.png")
         plt.close()
 
@@ -97,7 +95,8 @@ class Simulation:
             if peer.peer_id == id:
                 return peer
         return None
-
+    
+    # Function to Run the simulation for the specified duration, processing events from the event queue.
     def run_simulation(self, simulation_duration):
         current_time=0.0
         while current_time <= self.simulation_duration and event_queue:
@@ -118,24 +117,52 @@ class Simulation:
     
     def visualize_blockchain(self, peer):
         G = nx.DiGraph()
-        plt.figure(figsize=(12,10))
-        blockchain=peer.blockchain
+        plt.figure(figsize=(5,10))
+        blockchain = peer.blockchain
+        levels = {}
         for index, blocks in blockchain.blocks.items():
             for block in blocks:
-                G.add_node(block.blk_id, label=f"Blk_ID: {block.blk_id[:5]}\nIndex: {block.index}\nMiner: {block.miner_id}\nMine Time:\n{round(block.mine_time,3)}\nTxns: {len(block.transactions)}")
+                G.add_node(block.blk_id, label=f"{block.index}")
+                if block.index not in levels:
+                    levels[block.index] = []
+                levels[block.index].append(block.blk_id)
 
         for index, blocks in blockchain.blocks.items():
             for block in blocks:
                 if block.prev_blk_id != -1:
                     G.add_edge(block.prev_blk_id, block.blk_id)
 
-        pos = nx.planar_layout(G)
+        # Position nodes from top to bottom, equidistant horizontally
+        pos = {}
+        x_spacing = 0.1
+        y_spacing = 2
+        for level, nodes in levels.items():
+            y = -level * y_spacing
+            for i, node in enumerate(nodes):
+                pos[node] = (i * x_spacing, y)
+
+        # Draw the graph
         labels = nx.get_node_attributes(G, 'label')
-        nx.draw(G, pos, with_labels=True, labels=labels, node_size=50, node_color='lightgreen', font_size=0, node_shape='s')
+        nx.draw(G, pos, with_labels=True, labels=labels, node_size=100, node_color='skyblue', font_size=3, node_shape='s')
+        longest_path=nx.dag_longest_path(G)
+        counter=0
+        for blk_id in longest_path:
+            block=self.find_block_by_id(blk_id, peer)
+            if block.miner_id == peer.peer_id:
+                counter+=1
+                
+        plt.text(0,0, f'Number of Blocks in \nLongest Chain: {max(blockchain.blocks.keys())+1}\nBlocks by peer: {counter}\nIs slow: {peer.is_slow}\nIs low cpu:{peer.is_low_cpu}', fontsize=10, color='black')
         plt.title("Blockchain Visualization")
         plt.savefig(f"visuals/Blockchain_{peer.peer_id}.png")
         plt.close()
 
+    def find_block_by_id(self,blk_id,peer):
+        for value in peer.blockchain.blocks.values():
+            for block in value:
+                if block.blk_id == blk_id:
+                    return block
+        return None
+    
     def plot_blockchain_tree(self):
         for peer in self.peers:
             self.visualize_blockchain(peer)
@@ -146,7 +173,7 @@ class Simulation:
             with open(f'block_tree_files/block_tree_{peer.peer_id}','w') as file:
                 file.writelines(lines)
 
-     
+#Main function 
 if __name__=="__main__":
     if(len(sys.argv)<7):
         print(f"Usage: {sys.argv[0]} <num_peers> <slow_%> <low_cpu_%> <mean_txn_time> <mean_blkgen_time> <duration>")

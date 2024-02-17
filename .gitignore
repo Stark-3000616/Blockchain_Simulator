@@ -6,3 +6,5 @@ blockchain_graph
 __pycache__
 visuals
 block_tree_files
+graphviz
+Final Graphs
