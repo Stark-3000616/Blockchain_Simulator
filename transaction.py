@@ -1,5 +1,6 @@
 import shortuuid
 
+#Structure of Transactions
 class Transaction:
     def __init__(self, peer_id1, peer_id2, amount):
         self.txn_id=shortuuid.uuid()
@@ -8,6 +9,7 @@ class Transaction:
         self.amount=amount
         self.statement=f"{self.txn_id}:{self.sender} pays {self.receiver} {amount} coins"
 
+#Structure of coinbase transactions
 class Coinbase:
     def __init__(self, peer_id):
         self.txn_id=shortuuid.uuid()

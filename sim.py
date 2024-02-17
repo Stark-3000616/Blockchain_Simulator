@@ -117,6 +117,7 @@ class Simulation:
             elif current_event.event_type == 'blk_receive':
                 peer.receive_block(current_time, current_event.data)
     
+    #Function for developing graphs of blockchain for each node
     def visualize_blockchain(self, peer):
         G = nx.DiGraph()
         plt.figure(figsize=(5,10))
@@ -165,11 +166,12 @@ class Simulation:
                 if block.blk_id == blk_id:
                     return block
         return None
-    
+
     def plot_blockchain_tree(self):
         for peer in self.peers:
             self.visualize_blockchain(peer)
-            
+    
+    #Function for writing block tree files for each node
     def write_files(self):
         for peer in self.peers:
             lines=peer.file_writing_lines
