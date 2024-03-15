@@ -30,7 +30,7 @@ class Peer:
         self.mean_block_generation_time=mean_block_generation_time
         self.file_writing_lines=['block_index,miner_id,block_id,num_of_txns,mine_time,arrival_time']
     
-
+    #Function to handle transaction generation event
     def generate_transaction(self, current_time):
         receiver_id=random.choice([peer_id for peer_id in self.all_peers if peer_id != self.peer_id])
         amount = random.randint(0, 5)
@@ -38,17 +38,22 @@ class Peer:
         #calling receive transaction to it self
         self.receive_transaction(txn, current_time)
     
+    #Function to find transaction in the stored transactions
     def find_transactions(self, txn):
         for transaction in self.transactions:
             if(transaction.txn_id == txn.txn_id):
                 return True
         return False
 
+    #Function to handle receive transaction event
     def receive_transaction(self, txn, current_time):
         #To prevent transmitting same transactions
+        #Implementation of Transaction Generation(Part 2)
+        #Check to facilitate loopless transaction forwarding
         if self.find_transactions(txn):
             return
         self.transactions.append(txn)
+        #Simulating Latencies for transaction propagation
         m = sys.getsizeof(txn)*8
         for neighbour in self.neighbours:
             c=0
@@ -61,6 +66,7 @@ class Peer:
             new_event= Event(current_time+time_delta, 'txn_receive', neighbour[0], txn)
             heapq.heappush(event_queue, new_event)
     
+    #Function to start generating block by a node
     def generate_block(self, current_time):
         prev_hash=hash(self.blockchain.last_block)
         index=self.blockchain.last_block.index+1
@@ -75,6 +81,7 @@ class Peer:
         mining = Event(current_time+Tk, 'blk_mining', self.peer_id, new_block)
         heapq.heappush(event_queue, mining)
 
+    #Function to handle Block Mining event
     def mine_block(self, current_time, data):
         block = data
         block.mine_time=current_time
@@ -83,6 +90,7 @@ class Peer:
         else:
             self.receive_block(current_time, block)
 
+    #Function to validate a block and return the balance after making all transactions
     def validate_block(self, block):
         if block.index-1 in self.blockchain.blocks:
             prev_block=None
@@ -110,8 +118,10 @@ class Peer:
         
         return balance
 
+    #Function handle receive block event
     def receive_block(self, current_time, block):
         if block.miner_id!=-1:
+            #Check to facilitate loopless block forwarding
             if block.index in self.blockchain.blocks:
                 for blk in self.blockchain.blocks[block.index]:
                     if blk.blk_id == block.blk_id:
@@ -130,6 +140,7 @@ class Peer:
         else:
             self.blockchain.add_genesis(block)
         self.add_to_file_writing(block.index, block.miner_id, block.blk_id, len(block.transactions), block.mine_time, current_time)
+        #Simukating Latencies for Block Propagation
         m = sys.getsizeof(block)*8
         for neighbour in self.neighbours:
             c=0
@@ -142,7 +153,8 @@ class Peer:
             new_event=Event(current_time+time_delta, 'blk_receive', neighbour[0], block)
             heapq.heappush(event_queue, new_event)
         self.generate_block(current_time)
-        
+    
+    #Function for storing logs on each block receive
     def add_to_file_writing(self,block_index,miner_id,block_id,num_of_txns,mine_time,arrival_time):
         self.file_writing_lines.append(f'\n{block_index},{miner_id},{block_id},{num_of_txns},{mine_time},{arrival_time}') 
 

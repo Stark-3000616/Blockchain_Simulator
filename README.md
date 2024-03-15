@@ -54,9 +54,8 @@ This project is a discrete-event simulator to study blockchain networks. It simu
 - Simulation duration
 
 ## Visualization
-The simulation includes visualization of the blockchain tree using NetworkX and Matplotlib. The visualization shows the structure of the blockchain, including blocks and their relationships.
+The simulation includes visualization of the blockchain tree using NetworkX and Matplotlib. The visualization shows the structure of the blockchain, including blocks and their relationships. Moreveor graph is generated for the demonstration of peer to peer network.
 
 ## Contributors
 - Sayantan Biswas
 - Shamik Kumar De
-

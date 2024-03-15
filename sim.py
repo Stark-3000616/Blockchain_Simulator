@@ -57,6 +57,7 @@ class Simulation:
             self.graph.add_edges_from([(peer, connected_peer) for connected_peer in peers_to_connect])
             for connected_peer in peers_to_connect:
                 peer.neighbours.append((connected_peer.peer_id, connected_peer.is_slow))
+    
     #Function to check for graph being connected or not
     def is_connected_graph(self):
         return nx.is_connected(self.graph)
@@ -71,6 +72,7 @@ class Simulation:
         heapq.heappush(event_queue, event)
     #Function to initialize events
     def initialize_events(self, simulation_duration, mean_transaction_time):
+        #Implementation of Transaction Generation(Part1) --- Part2 in peer.py
         event_time=0.0
         while event_time<= simulation_duration:
             peer = random.choice([node for node in self.peers])
@@ -115,6 +117,7 @@ class Simulation:
             elif current_event.event_type == 'blk_receive':
                 peer.receive_block(current_time, current_event.data)
     
+    #Function for developing graphs of blockchain for each node
     def visualize_blockchain(self, peer):
         G = nx.DiGraph()
         plt.figure(figsize=(5,10))
@@ -157,17 +160,19 @@ class Simulation:
         plt.savefig(f"visuals/Blockchain_{peer.peer_id}.png")
         plt.close()
 
+    #Function for proper maintenance of block tree files for each node.
     def find_block_by_id(self,blk_id,peer):
         for value in peer.blockchain.blocks.values():
             for block in value:
                 if block.blk_id == blk_id:
                     return block
         return None
-    
+
     def plot_blockchain_tree(self):
         for peer in self.peers:
             self.visualize_blockchain(peer)
-            
+    
+    #Function for writing block tree files for each node
     def write_files(self):
         for peer in self.peers:
             lines=peer.file_writing_lines
@@ -197,23 +202,28 @@ if __name__=="__main__":
 
     print("Creating peers...")
     simulation.initialize_peers(speed_of_light_delay, mean_block_generation_time)
+    
     print("Creating network...")
+    #Implementation of a connected peer to peer network
     simulation.generate_random_topology()
     while not simulation.is_connected_graph():
         simulation.recreate_graph()
+    
     print("Adding Events to the Queue...")
     simulation.initialize_events(simulation_duration, mean_transaction_time)
+    
     print("Running Simulation...")
     # simulation.send_genesis_block()
     simulation.genesis_block_receive()
     simulation.run_simulation(simulation_duration)
     simulation.display_network()
     print("Simulation Completed")
+    
     print("Drawing Pictures for Visualisation...")
     simulation.plot_blockchain_tree()
+    
     print("Writing the block tree files...")
     simulation.write_files()
+    
     print("Process Completed .. 100%")    
 
-# 1. Longest Chain selection on the basis of arrival time of the blocks
-# 2. 

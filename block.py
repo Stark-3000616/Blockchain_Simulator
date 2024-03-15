@@ -1,6 +1,7 @@
 import shortuuid
 from transaction import Coinbase
 
+#Structure of each block
 class Block:
     def __init__(self, prev_hash, miner_id, index, prev_blk_id):
         self.blk_id=shortuuid.uuid()
@@ -13,6 +14,6 @@ class Block:
         self.balance=[]
         self.prev_blk_id=prev_blk_id
         self.miner_id = miner_id 
-
+    #Function for adding transactions to the block
     def add_transaction(self, txn):
         self.transactions.append(txn)

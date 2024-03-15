@@ -1,3 +1,4 @@
+#Structure of a event in the event queue
 class Event:
 
     def __init__(self, event_time, event_type, peer_id, data=None):
