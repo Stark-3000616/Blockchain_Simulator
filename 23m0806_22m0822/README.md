@@ -28,6 +28,8 @@ This project is a discrete-event simulator to study blockchain networks. It simu
 - transaction.py
 - event.py
 - block.py
+- Workflow.png
+- Report.pdf
 
 ## Usage
 1. Set the desired parameters in the `main` function of `sim.py`.
