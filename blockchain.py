@@ -19,8 +19,12 @@ class Blockchain:
             self.last_block=block
         else:
             self.blocks[block.index].append(block)
-            #To manage forking on the basis of mine time
-            if block.index == self.last_block.index and block.mine_time<self.last_block.mine_time:
-                self.last_block=block
+    
+    def find_block_by_id(self, blk_id):
+        for value in self.blocks.values():
+            for block in value:
+                if block.blk_id == blk_id:
+                    return block
+        return None
     
 

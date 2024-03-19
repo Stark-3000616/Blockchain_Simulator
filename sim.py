@@ -18,6 +18,7 @@ class Simulation:
     # percentages of slow and low-CPU peers, and simulation duration.
     def __init__(self, num_peers, slow_percentage, low_cpu_percentage, simulation_duration):
         self.peers= []
+        self.selfish_miners= []
         self.graph= nx.Graph()
         self.num_peers=num_peers
         self.simulation_duration = simulation_duration
@@ -27,7 +28,7 @@ class Simulation:
 
 
     #Initiliazing Peers
-    def initialize_peers(self, speed_of_light_delay, mean_block_generation_time):
+    def initialize_peers(self, speed_of_light_delay, mean_block_generation_time, hashing_power1, hashing_power2):
         #Randomly selecting peers to be slow and have low cpu
         slow=[0]*self.num_peers
         low_cpu=[0]*self.num_peers
@@ -36,7 +37,7 @@ class Simulation:
         num_low_cpu=sum(low_cpu)
         num_high_cpu=self.num_peers-num_low_cpu
         #Determing Hashing Power
-        hashing_power=1/(num_high_cpu*10 + num_low_cpu)
+        hashing_power=(100-hashing_power1-hashing_power2)/(num_high_cpu*10 + num_low_cpu)
         for i in indices1:
             slow[i]=1
         for i in indices2:
@@ -44,16 +45,23 @@ class Simulation:
         
         #Creating Peers
         for i in range(0, self.num_peers):
-            peer = Peer(i, slow[i], low_cpu[i], speed_of_light_delay, hashing_power, mean_block_generation_time, self.num_peers)
+            peer = Peer(i, slow[i], low_cpu[i], speed_of_light_delay, hashing_power, mean_block_generation_time, self.num_peers+2)
             self.peers.append(peer)
+
+        #Creating Selfish miners
+        miner1= Peer(self.num_peers, False, False, speed_of_light_delay, hashing_power1, mean_block_generation_time, self.num_peers+2, True)
+        miner2= Peer(self.num_peers+1, False, False, speed_of_light_delay, hashing_power2, mean_block_generation_time, self.num_peers+2, True)
+        self.selfish_miners=[miner1, miner2]
+
+        
     # Function to generate a random network topology by adding nodes corresponding to peers,
     # and connecting them randomly with a degree between 3 and 6.
     def generate_random_topology(self):
-        self.graph.add_nodes_from(self.peers)
-        for peer in self.peers:
+        self.graph.add_nodes_from(self.peers+self.selfish_miners)
+        for peer in self.peers+self.selfish_miners:
             num_connections = random.randint(3,6) - self.graph.degree[peer]
             num_connections = max(0, num_connections)
-            peers_to_connect = random.sample([other_peer for other_peer in self.peers if other_peer != peer and peer not in other_peer.neighbours and len(other_peer.neighbours)<6], num_connections)
+            peers_to_connect = random.sample([other_peer for other_peer in self.peers+self.selfish_miners if other_peer != peer and peer not in other_peer.neighbours and len(other_peer.neighbours)<6], num_connections)
             self.graph.add_edges_from([(peer, connected_peer) for connected_peer in peers_to_connect])
             for connected_peer in peers_to_connect:
                 peer.neighbours.append((connected_peer.peer_id, connected_peer.is_slow))
@@ -63,7 +71,7 @@ class Simulation:
         return nx.is_connected(self.graph)
 
     def recreate_graph(self):
-        for peer in self.peers:
+        for peer in self.peers+self.selfish_miners:
             peer.neighbours=[]
         self.generate_random_topology()
 
@@ -82,10 +90,10 @@ class Simulation:
    #Function for Scheduling the event of creating genesis block and then receiving by a peer
     def genesis_block_receive(self):
         genesis=Block(0, -1, 0, -1)
-        genesis.balance=[50]*self.num_peers
-        peer_id = 0
-        genesis_event = Event(0, 'blk_receive', peer_id, genesis)
-        heapq.heappush(event_queue, genesis_event)
+        genesis.balance=[50]*(self.num_peers+2)
+        for i in range(self.num_peers+2):
+            genesis_event = Event(0, 'blk_receive', i, genesis)
+            heapq.heappush(event_queue, genesis_event)
     
     def display_network(self):
         nx.draw(self.graph, node_color='red', node_size=60, font_size=5)
@@ -93,7 +101,7 @@ class Simulation:
         plt.close()
 
     def find_peer_by_id(self, id):
-        for peer in self.peers:
+        for peer in self.peers+self.selfish_miners:
             if peer.peer_id == id:
                 return peer
         return None
@@ -121,7 +129,7 @@ class Simulation:
     def visualize_blockchain(self, peer):
         G = nx.DiGraph()
         plt.figure(figsize=(5,10))
-        blockchain = peer.blockchain
+        blockchain = peer.private_chain
         levels = {}
         for index, blocks in blockchain.blocks.items():
             for block in blocks:
@@ -146,30 +154,38 @@ class Simulation:
 
         # Draw the graph
         labels = nx.get_node_attributes(G, 'label')
-        nx.draw(G, pos, with_labels=True, labels=labels, node_size=100, node_color='skyblue', font_size=3, node_shape='s')
-        longest_path=nx.dag_longest_path(G)
-        counter=0
-        for blk_id in longest_path:
-            block=self.find_block_by_id(blk_id,peer)
-            if block and block.miner_id != -1:
-                miner= self.find_peer_by_id(block.miner_id)
-                if not miner.is_low_cpu:
-                    counter+=1
-        plt.text(0,0, f'Total Number of Blocks: {sum([len(lst) for lst in peer.blockchain.blocks.values()])}\nNumber of Blocks in \nLongest Chain: {max(blockchain.blocks.keys())+1}\nBlocks by High CPU: {counter}\nBlocks by Low CPU: {len(longest_path)-counter}', fontsize=10, color='black')
+        node_colors = []
+        for block_id ,blocks in blockchain.blocks.items():
+            for block in blocks:
+                # if self.find_peer_by_id(block.miner_id) in self.selfish_miners:
+                if block.miner_id >= self.num_peers:  
+                    node_colors.append('red' if self.find_peer_by_id(block.miner_id).peer_id == self.selfish_miners[0].peer_id else 'blue')
+                else:
+                    node_colors.append('skyblue')        
+        nx.draw(G, pos, with_labels=True, labels=labels, node_size=100, node_color=node_colors, font_size=3, node_shape='s')
+        # longest_path=nx.dag_longest_path(G)
+        # counter=0
+        # for blk_id in longest_path:
+        #     block=self.find_block_by_id(blk_id,peer)
+        #     if block and block.miner_id != -1:
+        #         miner= self.find_peer_by_id(block.miner_id)
+        #         if not miner.is_low_cpu:
+        #             counter+=1
+        # plt.text(0,0, f'Total Number of Blocks: {sum([len(lst) for lst in peer.blockchain.blocks.values()])}\nNumber of Blocks in \nLongest Chain: {max(blockchain.blocks.keys())+1}\nBlocks by High CPU: {counter}\nBlocks by Low CPU: {len(longest_path)-counter}', fontsize=10, color='black')
         plt.title("Blockchain Visualization")
         plt.savefig(f"visuals/Blockchain_{peer.peer_id}.png")
         plt.close()
 
     #Function for proper maintenance of block tree files for each node.
     def find_block_by_id(self,blk_id,peer):
-        for value in peer.blockchain.blocks.values():
+        for value in peer.private_chain.blocks.values():
             for block in value:
                 if block.blk_id == blk_id:
                     return block
         return None
 
     def plot_blockchain_tree(self):
-        for peer in self.peers:
+        for peer in self.peers+self.selfish_miners:
             self.visualize_blockchain(peer)
     
     #Function for writing block tree files for each node
@@ -181,8 +197,8 @@ class Simulation:
 
 #Main function 
 if __name__=="__main__":
-    if(len(sys.argv)<7):
-        print(f"Usage: {sys.argv[0]} <num_peers> <slow_%> <low_cpu_%> <mean_txn_time> <mean_blkgen_time> <duration>")
+    if(len(sys.argv)<9):
+        print(f"Usage: {sys.argv[0]} <num_peers> <slow_%> <low_cpu_%> <mean_txn_time> <mean_blkgen_time> <duration> <hashing_power1> <hashing_power2>")
         sys.exit(1)
         
         
@@ -193,6 +209,8 @@ if __name__=="__main__":
     mean_transaction_time = int(sys.argv[4])
     mean_block_generation_time = int(sys.argv[5])
     simulation_duration = int(sys.argv[6])
+    hashing_power1 = int(sys.argv[7])
+    hashing_power2 = int(sys.argv[8])
 
     # Creating an object of Simulation Class
     simulation= Simulation(num_peers, slow_percentage, low_cpu_percentage, simulation_duration)
@@ -201,7 +219,7 @@ if __name__=="__main__":
     speed_of_light_delay=random.uniform(0.01, 0.5)
 
     print("Creating peers...")
-    simulation.initialize_peers(speed_of_light_delay, mean_block_generation_time)
+    simulation.initialize_peers(speed_of_light_delay, mean_block_generation_time, hashing_power1, hashing_power2)
     
     print("Creating network...")
     #Implementation of a connected peer to peer network
