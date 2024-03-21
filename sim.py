@@ -38,7 +38,7 @@ class Simulation:
         num_low_cpu=sum(low_cpu)
         num_high_cpu=self.num_peers-num_low_cpu
         #Determing Hashing Power
-        hashing_power=(100-hashing_power1-hashing_power2)/(num_high_cpu*10 + num_low_cpu)
+        hashing_power=(1-hashing_power1/100-hashing_power2/100)/(num_high_cpu*10 + num_low_cpu)
         for i in indices1:
             slow[i]=1
         for i in indices2:

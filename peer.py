@@ -179,6 +179,7 @@ class Peer:
             else:
                 self.blockchain.add_genesis(block)
                 self.private_chain.add_genesis(block)
+                self.generate_block(current_time)
         else:
             if block.index in self.private_chain.blocks:
                 for blk in self.private_chain.blocks[block.index]:
@@ -198,6 +199,7 @@ class Peer:
             elif self.blockchain.last_block.index >= self.private_chain.last_block.index:
                 self.private_chain.add_block(block)
                 self.blockchain.add_block(block)
+                #self.generate_block(current_time)
             elif self.blockchain.last_block.index == self.private_chain.last_block.index-1:
                 self.broadcast_block(current_time, self.private_chain.last_block)
                 self.private_chain.add_block(block)
