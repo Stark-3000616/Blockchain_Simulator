@@ -50,8 +50,8 @@ class Simulation:
             self.peers.append(peer)
 
         #Creating Selfish miners
-        miner1= Peer(self.num_peers, False, False, speed_of_light_delay, hashing_power1, mean_block_generation_time, self.num_peers+2, True)
-        miner2= Peer(self.num_peers+1, False, False, speed_of_light_delay, hashing_power2, mean_block_generation_time, self.num_peers+2, True)
+        miner1= Peer(self.num_peers, False, False, speed_of_light_delay, hashing_power1/100, mean_block_generation_time, self.num_peers+2, True)
+        miner2= Peer(self.num_peers+1, False, False, speed_of_light_delay, hashing_power2/100, mean_block_generation_time, self.num_peers+2, True)
         self.selfish_miners=[miner1, miner2]
 
         
@@ -97,7 +97,7 @@ class Simulation:
             heapq.heappush(event_queue, genesis_event)
     
     def display_network(self):
-        nx.draw(self.graph, node_color='red', node_size=60, font_size=5)
+        nx.draw(self.graph, node_color='skyblue', node_size=60, font_size=40)
         plt.savefig("graph.png")
         plt.close()
 
@@ -125,9 +125,16 @@ class Simulation:
                 peer.mine_block(current_time, current_event.data)
             elif current_event.event_type == 'blk_receive':
                 peer.receive_block(current_time, current_event.data)
+        
+        while event_queue:
+            current_event = heapq.heappop(event_queue)
+            current_time = current_event.event_time
+            peer = self.find_peer_by_id(current_event.peer_id)
+            if current_event.event_type == 'blk_receive':
+                peer.receive_block(current_time, current_event.data)
     
     #Function for developing graphs of blockchain for each node
-    def visualize_blockchain(self, peer):
+    def visualize_blockchain(self, peer:Peer):
         G = nx.DiGraph()
         plt.figure(figsize=(5,10))
         blockchain = peer.private_chain
@@ -164,15 +171,16 @@ class Simulation:
                 else:
                     node_colors.append('skyblue')        
         nx.draw(G, pos, with_labels=True, labels=labels, node_size=100, node_color=node_colors, font_size=3, node_shape='s')
-        # longest_path=nx.dag_longest_path(G)
-        # counter=0
-        # for blk_id in longest_path:
-        #     block=self.find_block_by_id(blk_id,peer)
-        #     if block and block.miner_id != -1:
-        #         miner= self.find_peer_by_id(block.miner_id)
-        #         if not miner.is_low_cpu:
-        #             counter+=1
-        # plt.text(0,0, f'Total Number of Blocks: {sum([len(lst) for lst in peer.blockchain.blocks.values()])}\nNumber of Blocks in \nLongest Chain: {max(blockchain.blocks.keys())+1}\nBlocks by High CPU: {counter}\nBlocks by Low CPU: {len(longest_path)-counter}', fontsize=10, color='black')
+        longest_path=nx.dag_longest_path(G)
+        main_chain_blocks=0
+        total_blocks=0
+        for blklist in peer.private_chain.blocks.values():
+            for blk in blklist:
+                if blk.miner_id == peer.peer_id:
+                    total_blocks+=1
+                    if blk.blk_id in longest_path:
+                        main_chain_blocks+=1
+        plt.text(0,0, f'Total Blocks: {sum([len(lst) for lst in peer.private_chain.blocks.values()])}\nBlocks in Longest Chain: {max(blockchain.blocks.keys())+1}\nTotal Blocks by Peer: {total_blocks}\nBlocks in Longest Chain by Peer: {main_chain_blocks}', fontsize=13, color='black')
         plt.title("Blockchain Visualization")
         plt.savefig(f"visuals/Blockchain_{peer.peer_id}.png")
         plt.close()
@@ -217,7 +225,7 @@ if __name__=="__main__":
     simulation= Simulation(num_peers, slow_percentage, low_cpu_percentage, simulation_duration)
     
     # Speed of Light delay while propagation of
-    speed_of_light_delay=random.uniform(0.01, 0.5)
+    speed_of_light_delay=np.random.uniform(0.01, 0.5, size=(num_peers+2, num_peers+2))
 
     print("Creating peers...")
     simulation.initialize_peers(speed_of_light_delay, mean_block_generation_time, hashing_power1, hashing_power2)

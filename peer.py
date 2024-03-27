@@ -59,7 +59,7 @@ class Peer:
         if self.selfish_miner:
             return
         #Simulating Latencies for transaction propagation
-        m = sys.getsizeof(txn)*8
+        m = 1000*8
         for neighbour in self.neighbours:
             c=0
             if not self.is_slow and not neighbour[1]:
@@ -67,7 +67,7 @@ class Peer:
             else:
                 c=5000000
             d = np.random.exponential(96000/c)
-            time_delta = self.speed_of_light_delay + (m/c) + d
+            time_delta = self.speed_of_light_delay[self.peer_id][neighbour[0]] + (m/c) + d
             new_event= Event(current_time+time_delta, 'txn_receive', neighbour[0], txn)
             heapq.heappush(event_queue, new_event)
     
@@ -81,10 +81,9 @@ class Peer:
         new_block=Block(prev_hash, self.peer_id, index, self.blockchain.last_block.blk_id)
         
         i=0
-        while i < len(self.transactions) and sys.getsizeof(new_block)<1000000:
+        while i < len(self.transactions) and len(new_block.transactions)<1000:
             new_block.add_transaction(self.transactions[i])
             i+=1
-        print(self.mean_block_generation_time, self.hashing_power, self.mean_block_generation_time/self.hashing_power)
         Tk = np.random.exponential(self.mean_block_generation_time/self.hashing_power)
         mining = Event(current_time+Tk, 'blk_mining', self.peer_id, new_block)
         heapq.heappush(event_queue, mining)
@@ -114,20 +113,20 @@ class Peer:
             return None
         #Validating Transactions
         balance=prev_block.balance[:]
-        for txn in block.transactions:
-            if isinstance(txn, Coinbase):
-                balance[txn.miner]+=50
-            else:
-                balance[txn.sender]-=txn.amount
-                balance[txn.receiver]+=txn.amount
-        for i in balance:
-            if i < 0:
-                return None
+        # for txn in block.transactions:
+        #     if isinstance(txn, Coinbase):
+        #         balance[txn.miner]+=50
+        #     else:
+        #         balance[txn.sender]-=txn.amount
+        #         balance[txn.receiver]+=txn.amount
+        # for i in balance:
+        #     if i < 0:
+        #         return None
         
         return balance
 
     #Function handles receive block event only for honest miners
-    def receive_block(self, current_time, block):
+    def receive_block(self, current_time, block: Block):
         if self.selfish_miner:
             self.selfish_miner_receive_block(current_time, block)
             return
@@ -154,7 +153,7 @@ class Peer:
             self.private_chain.add_genesis(block)
         self.add_to_file_writing(block.index, block.miner_id, block.blk_id, len(block.transactions), block.mine_time, current_time)
        
-        m = sys.getsizeof(block)*8
+        m=len(block.transactions)*1000*8
         for neighbour in self.neighbours:
             c=0
             if not self.is_slow and not neighbour[1]:
@@ -162,10 +161,11 @@ class Peer:
             else:
                 c=5000000
             d = np.random.exponential(96000/c)
-            time_delta = self.speed_of_light_delay + (m/c) + d
+            time_delta = self.speed_of_light_delay[self.peer_id][neighbour[0]] + (m/c) + d
             new_event=Event(current_time+time_delta, 'blk_receive', neighbour[0], block)
             heapq.heappush(event_queue, new_event)
-        self.generate_block(current_time)
+        if block == self.private_chain.last_block:
+            self.generate_block(current_time)
     
     #Function for storing logs on each block receive
     def add_to_file_writing(self,block_index,miner_id,block_id,num_of_txns,mine_time,arrival_time):
@@ -195,23 +195,27 @@ class Peer:
                 self.used_txns.append(txn)
             if block.miner_id == self.peer_id:
                 self.private_chain.add_block(block)
+                if self.private_chain.last_block.index == self.blockchain.last_block.index-1:
+                    self.broadcast_block(self.private_chain.last_block)
                 self.generate_block(current_time)
             elif self.blockchain.last_block.index >= self.private_chain.last_block.index:
                 self.private_chain.add_block(block)
                 self.blockchain.add_block(block)
-                #self.generate_block(current_time)
+                self.generate_block(current_time)
             elif self.blockchain.last_block.index == self.private_chain.last_block.index-1:
                 self.broadcast_block(current_time, self.private_chain.last_block)
                 self.private_chain.add_block(block)
                 self.blockchain.add_block(block)
+                self.generate_block(current_time)
             elif self.blockchain.last_block.index == self.private_chain.last_block.index-2:
                 self.broadcast_block(current_time, self.private_chain.find_block_by_id(self.private_chain.last_block.prev_blk_id))
                 self.broadcast_block(current_time, self.private_chain.last_block)
                 self.private_chain.add_block(block)
                 self.blockchain.add_block(block)
+                self.generate_block(current_time)
             else:
                 parallelblock=None
-                for blk in self.private_chain.block[block.index]:
+                for blk in self.private_chain.blocks[block.index]:
                     if blk.miner_id == self.peer_id:
                         parallelblock=blk
                         break
@@ -219,9 +223,9 @@ class Peer:
                 self.private_chain.add_block(block)
                 self.blockchain.add_block(block)
             
-    def broadcast_block(self, current_time, block):
+    def broadcast_block(self, current_time, block: Block):
         self.blockchain.add_block(block)
-        m = sys.getsizeof(block)*8
+        m = len(block.transactions)*1000*8
         for neighbour in self.neighbours:
             c=0
             if not self.is_slow and not neighbour[1]:
@@ -229,7 +233,7 @@ class Peer:
             else:
                 c=5000000
             d = np.random.exponential(96000/c)
-            time_delta = self.speed_of_light_delay + (m/c) + d
+            time_delta = self.speed_of_light_delay[self.peer_id][neighbour[0]] + (m/c) + d
             new_event=Event(current_time+time_delta, 'blk_receive', neighbour[0], block)
             heapq.heappush(event_queue, new_event)
 
