@@ -105,11 +105,14 @@ class Peer:
                 if blk.blk_id == block.prev_blk_id:
                     prev_block=blk
                     if hash(blk) != block.prev_hash:
+                        print("Block getting rejected for hash", self.peer_id)
                         return None
             if not prev_block:
+                print("Block getting rejected", self.peer_id)
                 return None
         #To invalidate receiving of future blocks
         else:
+            print("Block getting rejected", self.peer_id)
             return None
         #Validating Transactions
         balance=prev_block.balance[:]

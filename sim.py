@@ -50,8 +50,8 @@ class Simulation:
             self.peers.append(peer)
 
         #Creating Selfish miners
-        miner1= Peer(self.num_peers, False, False, speed_of_light_delay, hashing_power1/100, mean_block_generation_time, self.num_peers+2, True)
-        miner2= Peer(self.num_peers+1, False, False, speed_of_light_delay, hashing_power2/100, mean_block_generation_time, self.num_peers+2, True)
+        miner1= Peer(self.num_peers, 0, 0, speed_of_light_delay, hashing_power1/100, mean_block_generation_time, self.num_peers+2, True)
+        miner2= Peer(self.num_peers+1, 0, 0, speed_of_light_delay, hashing_power2/100, mean_block_generation_time, self.num_peers+2, True)
         self.selfish_miners=[miner1, miner2]
 
         
@@ -66,6 +66,10 @@ class Simulation:
             self.graph.add_edges_from([(peer, connected_peer) for connected_peer in peers_to_connect])
             for connected_peer in peers_to_connect:
                 peer.neighbours.append((connected_peer.peer_id, connected_peer.is_slow))
+                connected_peer.neighbours.append((peer.peer_id, peer.is_slow))
+        
+        for peer in self.peers+self.selfish_miners:
+            print(peer.peer_id, peer. neighbours)
     
     #Function to check for graph being connected or not
     def is_connected_graph(self):
