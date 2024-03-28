@@ -101,7 +101,9 @@ class Simulation:
             heapq.heappush(event_queue, genesis_event)
     
     def display_network(self):
-        nx.draw(self.graph, node_color='skyblue', node_size=60, font_size=40)
+        node_color=['skyblue']*self.num_peers
+        node_color=node_color+['red', 'blue']
+        nx.draw(self.graph, node_color=node_color, node_size=60, font_size=40)
         plt.savefig("graph.png")
         plt.close()
 
