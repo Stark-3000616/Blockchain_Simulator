@@ -103,7 +103,10 @@ class Simulation:
     def display_network(self):
         node_color=['skyblue']*self.num_peers
         node_color=node_color+['red', 'blue']
-        nx.draw(self.graph, node_color=node_color, node_size=60, font_size=40)
+        # nx.draw(self.graph, node_color=node_color, node_size=60, font_size=40)
+        # legend_labels = {'skyblue': 'Honest Nodes', 'red': 'Adversary 1', 'blue': 'Adversary 2'}
+        # legend_handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=10, label=label) for color, label in legend_labels.items()]
+        plt.legend({'skyblue': 'Honest Nodes', 'red': 'Adversary 1', 'blue': 'Adversary 2'})
         plt.savefig("graph.png")
         plt.close()
 

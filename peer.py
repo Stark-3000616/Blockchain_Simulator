@@ -116,15 +116,15 @@ class Peer:
             return None
         #Validating Transactions
         balance=prev_block.balance[:]
-        # for txn in block.transactions:
-        #     if isinstance(txn, Coinbase):
-        #         balance[txn.miner]+=50
-        #     else:
-        #         balance[txn.sender]-=txn.amount
-        #         balance[txn.receiver]+=txn.amount
-        # for i in balance:
-        #     if i < 0:
-        #         return None
+        for txn in block.transactions:
+            if isinstance(txn, Coinbase):
+                balance[txn.miner]+=50
+            else:
+                balance[txn.sender]-=txn.amount
+                balance[txn.receiver]+=txn.amount
+        for i in balance:
+            if i < 0:
+                return None
         
         return balance
 
